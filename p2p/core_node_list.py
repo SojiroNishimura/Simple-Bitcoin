@@ -28,3 +28,5 @@ class CoreNodeList:
     def get_list(self):
         return self.list
 
+    def get_c_node_info(self):
+        return list(self.list)[0]

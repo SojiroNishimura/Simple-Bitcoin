@@ -5,6 +5,7 @@ import codecs
 
 from concurrent.futures import ThreadPoolExecutor
 from .core_node_list import CoreNodeList
+from .edge_node_list import EdgeNodeList
 from .message_manager import (
     MessageManager,
     MSG_ADD,
@@ -31,6 +32,7 @@ class ConnectionManager:
         self.host = host
         self.port = my_port
         self.core_node_set = CoreNodeList()
+        self.edge_node_set = EdgeNodeList()
         self.__add_peer((host, my_port))
         self.mm = MessageManager()
 
@@ -74,6 +76,13 @@ class ConnectionManager:
             if peer != (self.host, self.port):
                 print('message will be sent to ...', peer)
                 self.send_msg(peer, msg)
+
+    def send_msg_to_all_edge(self, msg):
+        print('send_msg_to_all_edge was called!')
+        current_list = self.edge_node_set.get_list()
+        for edge in current_list:
+            print('messge will be sent to ...', edge)
+            self.send_msg(edge, msg)
 
     def connection_close(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -133,6 +142,14 @@ class ConnectionManager:
                 cl = pickle.dumps(self.core_node_set, 0).decode()
                 msg = self.mm.build(MSG_CORE_LIST, self.port, cl)
                 self.send_msg((addr[0], peer_port), msg)
+            elif cmd == MSG_ADD_AS_EDGE:
+                print('ADD request for Edge node was received!!')
+                self.__add_edge_node((addr[0], peer_port))
+                cl = pickle.dumps(self.core_node_set.get_list(), 0).decode()
+                msg = self.mm.build(MSG_CORE_LIST, self.port, cl)
+                self.send_msg((addr[0], peer_port), msg)
+            elif cmd == MSG_REMOVE_EDGE:
+                self.__remove_edge_node((addr[0], peer_port))
             else:
                 print('received unknown command', cmd)
                 return
@@ -153,8 +170,14 @@ class ConnectionManager:
     def __add_peer(self, peer):
         self.core_node_set.add((peer))
 
+    def __add_edge_node(self, edge):
+        self.edge_node_set.add((edge))
+
     def __remove_peer(self, peer):
         self.core_node_set.remove(peer)
+
+    def __remove_edge_node(self, edge):
+        self.edge_node_set.remove(edge)
 
     def __check_peers_connection(self):
 
