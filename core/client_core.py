@@ -25,6 +25,7 @@ class ClientCore:
         self.my_core_port = core_port
         self.cm = ConnectionManager4Edge(self.my_ip, my_port, core_host, core_port, self.__handle_message)
         self.mpm = MyProtocolMessageHandler()
+        self.my_protocol_message_store = []
 
     def start(self):
         self.client_state = STATE_ACTIVE
@@ -39,10 +40,19 @@ class ClientCore:
     def get_my_current_state(self):
         return self.client_state
 
-    def __get_myip(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 80))
-        return s.getsockname()[0]
+    def get_my_protocol_messages(self):
+        if self.my_protocol_message_store != []:
+            return self.my_protocol_message_store
+        else:
+            return None
+
+    def __client_api(self, request, message):
+        if request == 'pass_message_to_client_application':
+            self.my_protocol_message_store.append(message)
+        elif request == 'api_type':
+            return 'client_core_api'
+        else:
+            print('not implemented api was used')
 
     def __handle_message(self, msg):
         """
@@ -55,9 +65,14 @@ class ClientCore:
         elif msg[2] == MSG_ENHANCED:
             # P2P Network を単なるトランスポートして使っているアプリケーションが独自拡張したメッセージはここで処理する。
             # SimpleBitcoin としてはこの種別は使わない
-            self.mpm.handle_message(msg[4])
+            self.mpm.handle_message(msg[4], self.__client_api)
 
 
     def send_message_to_my_core_node(self, msg_type, msg):
         msgtxt = self.cm.get_message_text(msg_type, msg)
         self.cm.send_msg((self.my_core_host, self.my_core_port), msgtxt)
+
+    def __get_myip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        return s.getsockname()[0]

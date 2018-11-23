@@ -28,6 +28,7 @@ class ServerCore:
         self.mpm = MyProtocolMessageHandler()
         self.core_node_host = core_node_host
         self.core_node_port = core_node_port
+        self.my_protocol_message_store = []
 
     def start(self):
         self.server_state = STATE_STANDBY
@@ -48,6 +49,20 @@ class ServerCore:
     def get_my_current_state(self):
         return self.server_state
 
+    def __core_api(self, request, message):
+        msg_type = MSG_ENHANCED
+
+        if request == 'send_message_to_all_peer':
+            new_message = self.cm.get_message_text(msg_type, message)
+            self.cm.send_msg_to_all_peer(new_message)
+            return 'ok'
+        elif request == 'send_message_to_all_edge':
+            new_message = self.cm.get_message_text(msg_type, message)
+            self.cm.send_msg_to_all_edge(new_message)
+            return 'ok'
+        elif request == 'api_type':
+            return 'server_core_api'
+
     def __handle_message(self, msg, peer=None):
         if peer != None:
             # MSG_REQUEST_FULL_CHAIN
@@ -60,7 +75,12 @@ class ServerCore:
             elif msg[2] == RSP_FULL_CHAIN:
                 pass
             elif msg[2] == MSG_ENHANCED:
-                self.mpm.handle_message(msg[4])
+                print('received enhanced message', msg[4])
+                current_messages = self.my_protocol_message_store
+                has_same = False
+                if not msg[4] in current_messages:
+                    self.my_protocol_message_store.append(msg[4])
+                    self.mpm.handle_message(msg[4], self.__core_api)
 
     def __get_myip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
