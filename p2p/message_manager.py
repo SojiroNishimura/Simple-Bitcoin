@@ -11,6 +11,11 @@ MSG_REQUEST_CORE_LIST = 3
 MSG_PING = 4
 MSG_ADD_AS_EDGE = 5
 MSG_REMOVE_EDGE = 6
+MSG_NEW_TRANSACTION = 7
+MSG_NEW_BLOCK = 8
+MSG_REQUEST_FULL_CHAIN = 9
+RSP_FULL_CHAIN = 10
+MSG_ENHANCED = 11
 
 ERR_PROTOCOL_UNMATCH = 0
 ERR_VERSION_UNMATCH = 1
@@ -49,9 +54,11 @@ class MessageManager:
             return ('error', ERR_PROTOCOL_UNMATCH, None, None)
         elif msg_ver > StrictVersion(MY_VERSION):
             return ('error', ERR_VERSION_UNMATCH, None, None)
-        elif cmd == MSG_CORE_LIST:
-            return ('ok', OK_WITH_PAYLOAD, cmd, my_port, payload)
+        elif cmd in (MSG_CORE_LIST, MSG_NEW_TRANSACTION, MSG_NEW_BLOCK, RSP_FULL_CHAIN, MSG_ENHANCED):
+            result_type = OK_WITH_PAYLOAD
+            return ('ok', result_type, cmd, my_port, payload)
         else:
-            return ('ok', OK_WITHOUT_PAYLOAD, cmd, my_port, None)
+            result_type = OK_WITHOUT_PAYLOAD
+            return ('ok', result_type, cmd, my_port, None)
 
 

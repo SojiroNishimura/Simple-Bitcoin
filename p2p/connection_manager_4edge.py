@@ -20,7 +20,7 @@ PING_INTERVAL = 10
 
 
 class ConnectionManager4Edge(object):
-    def __init__(self, host, my_port, my_core_host, my_core_port):
+    def __init__(self, host, my_port, my_core_host, my_core_port, callback):
         print('Initializing ConnectionManager4Edge...')
         self.host = host
         self.port = my_port
@@ -28,6 +28,7 @@ class ConnectionManager4Edge(object):
         self.my_core_port = my_core_port
         self.core_node_set = CoreNodeList()
         self.mm = MessageManager()
+        self.callback = callback
 
     def start(self):
         t = threading.Thread(target=self.__wait_for_access)
@@ -158,3 +159,8 @@ class ConnectionManager4Edge(object):
 
         self.ping_timer = threading.Timer(PING_INTERVAL, self.__send_ping)
         self.ping_timer.start()
+
+    def get_message_text(self, msg_type, payload=None):
+        msgtxt = self.mm.build(msg_type, self.port, payload)
+        return msgtxt
+

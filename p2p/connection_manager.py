@@ -27,7 +27,7 @@ PING_INTERVAL = 1800 # 30min
 
 
 class ConnectionManager:
-    def __init__(self, host, my_port):
+    def __init__(self, host, my_port, callback):
         print('Initializing ConnectionManager...')
         self.host = host
         self.port = my_port
@@ -35,6 +35,7 @@ class ConnectionManager:
         self.edge_node_set = EdgeNodeList()
         self.__add_peer((host, my_port))
         self.mm = MessageManager()
+        self.callback = callback
 
 
     # 待受開始時に呼び出される
@@ -149,9 +150,10 @@ class ConnectionManager:
                 msg = self.mm.build(MSG_CORE_LIST, self.port, cl)
                 self.send_msg((addr[0], peer_port), msg)
             elif cmd == MSG_REMOVE_EDGE:
+                print('REMOE_EDGE request was received!! from ', addr[0], peer_port)
                 self.__remove_edge_node((addr[0], peer_port))
             else:
-                print('received unknown command', cmd)
+                self.callback((result, reason, cmd, peer_port, payload), (addr[0], peer_port))
                 return
         elif status == ('ok', OK_WITH_PAYLOAD):
             if cmd == MSG_CORE_LIST:
@@ -159,9 +161,9 @@ class ConnectionManager:
                 print('Refresh the core node list...')
                 new_core_set = pickle.loads(payload.encode('utf8'))
                 print('latest core node list: ', new_core_set)
-                self.core_node_set = new_core_set
+                self.core_node_set.overwrite(new_core_set)
             else:
-                print('received unknown command', cmd)
+                self.callback((result, reason, cmd, peer_port, payload), None)
                 return
         else:
             print('Unexpected status', status)
