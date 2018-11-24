@@ -4,7 +4,7 @@ import json
 
 
 from core.client_core import ClientCore
-from p2p.message_manager import MSG_ENHANCED
+from p2p.message_manager import MSG_NEW_TRANSACTION
 
 
 my_p2p_client = None
@@ -27,12 +27,31 @@ def main():
 
     sleep(10)
 
-
-    message = {
-        'message': 'test'
+    transaction = {
+        'sender': 'test1',
+        'recipient': 'test2',
+        'value' : 3
     }
 
-    my_p2p_client.send_message_to_my_core_node(MSG_ENHANCED, json.dumps(message))
+    my_p2p_client.send_message_to_my_core_node(MSG_NEW_TRANSACTION,json.dumps(transaction))
+
+    transaction2 = {
+        'sender': 'test1',
+        'recipient': 'test3',
+        'value' : 2
+    }
+
+    my_p2p_client.send_message_to_my_core_node(MSG_NEW_TRANSACTION,json.dumps(transaction2))
+
+    sleep(10)
+
+    transaction3 = {
+        'sender': 'test5',
+        'recipient': 'test6',
+        'value' : 10
+    }
+
+    my_p2p_client.send_message_to_my_core_node(MSG_NEW_TRANSACTION,json.dumps(transaction3))
 
 
 if __name__ == '__main__':

@@ -96,6 +96,9 @@ class ConnectionManager:
         msg = self.mm.build(MSG_REMOVE, self.port)
         self.send_msg((self.my_c_host, self.my_c_port), msg)
 
+    def __is_in_core_set(self, peer):
+        return self.core_node_set.has_this_peer(peer)
+
     def __handle_message(self, params):
         
         soc, addr, data_sum = params

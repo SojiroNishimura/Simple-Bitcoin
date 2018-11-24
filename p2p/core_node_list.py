@@ -28,5 +28,11 @@ class CoreNodeList:
     def get_list(self):
         return self.list
 
+    def get_length(self):
+        return len(self.list)[0]
+
     def get_c_node_info(self):
         return list(self.list)[0]
+
+    def has_this_peer(self, peer):
+        return peer in self.list
