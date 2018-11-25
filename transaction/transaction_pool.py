@@ -26,3 +26,8 @@ class TransactionPool:
         else:
             print('Currently, it seems transaction pool is empty...')
             return []
+
+    def renew_my_transactions(self, transactions):
+        with self.lock:
+            print('transaction pool will be renewed to ...', transactions)
+            self.transactions = transactions
