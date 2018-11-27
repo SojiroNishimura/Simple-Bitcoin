@@ -31,6 +31,13 @@ class Transaction:
         else:
             return False
 
+    def compute_change(self, fee):
+        total_in = sum(i.transaction['outputs'][i.output_index]['value'] for i in self.inputs)
+        total_out = sum(int(o.value) for o in self.outputs) + int(fee)
+        delta = total_in - total_out
+        return delta
+
+
 class TransactionOutput:
 
     def __init__(self, recipient_address, value):
@@ -39,7 +46,7 @@ class TransactionOutput:
 
     def to_dict(self):
         d = {
-            'recipient_address': self.recipient,
+            'recipient': self.recipient,
             'value': self.value,
         }
         return d

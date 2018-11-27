@@ -1,7 +1,17 @@
+import os
+import binascii
+import json
+
 from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import Button, Style
 
+from utils.key_manager import KeyManager
+from transaction.utxo_manager import UTXOManager
+from transaction.transactions import Transaction
+from transaction.transactions import TransactionInput
+from transaction.transactions import TransactionOutput
+from transaction.transactions import CoinbaseTransaction
 
 class SimpleBC_Gui(Frame):
     
@@ -19,12 +29,31 @@ class SimpleBC_Gui(Frame):
 
     def initApp(self):
         print('SimpleBitcoin client is now activating...: ')
+        self.km = KeyManager()
+        self.um = UTXOManager(self.km.my_address())
+
+        # テスト用
+        t1 = CoinbaseTransaction(self.km.my_address())
+        t2 = CoinbaseTransaction(self.km.my_address())
+        t3 = CoinbaseTransaction(self.km.my_address())
+
+        transactions = []
+        transactions.append(t1.to_dict())
+        transactions.append(t2.to_dict())
+        transactions.append(t3.to_dict())
+
+        self.um.extract_utxos(transactions)
+        self.update_balance()
 
     def display_info(self, info):
         pass
 
     def update_status(self, info):
         self.status_message.set(info)
+
+    def update_balance(self):
+        bal = str(self.um.my_balance)
+        self.coin_balance.set(bal)
 
     def create_menu(self):
         top = self.winfo_toplevel()
@@ -50,7 +79,56 @@ class SimpleBC_Gui(Frame):
         self.subMenu3.add_command(label='Show Blockchain', command=self.show_my_block_chain)
 
     def show_my_address(self):
-        pass
+        f = Tk()
+        label = Label(f, text='My Address')
+        label.pack()
+        key_info = Text(f, width=70, height=10)
+        my_address = self.km.my_address()
+        key_info.insert(INSERT, my_address)
+        key_info.pack()
+
+    def show_input_dialog_for_key_loading(self):
+
+        def load_my_keys():
+            f2 = Tk()
+            f2.withdraw()
+            fTyp = [('', '*.pem')]
+            iDir = os.path.abspath(os.path.dirname(__file__))
+            messagebox.showinfo('Load key pair', 'please choose your key file')
+            f_name = filedialog.askopenfilename(filetypes=fTyp, initialdir=iDir)
+
+            try:
+                file = open(f_name)
+                data = file.read()
+                target = binascii.unhexlify(data)
+                # TODO: 鍵ペアが不正時などの異常系処理を追加すべき
+                self.km.import_key_pair(target, p_phrase.get())
+            except Exception as e:
+                print(e)
+            finally:
+                # TODO: 保有コインの再確認処理を入れる
+                file.close()
+                f.destroy()
+                f2.destroy()
+                self.um = utxm.UTXOManager(self.km.my_address())
+                self.um.my_balance = 0
+                self.update_balance()
+
+        f = Tk()
+        label0 = Label(f, text='Please enter pass phrase for hyour key pair')
+        frame1 = ttk.Frame(f)
+        label1 = ttk.Label(frame1, text='Pass Phrase:')
+
+        p_phrase = StringVar()
+
+        entry1 = ttk.Entry(frame1, textvariable=p_phrase)
+        button1 = ttk.Button(frame1, text='Load', command=load_my_keys)
+
+        label0.grid(row=0, column=0, sticky=(N,E,S,W))
+        frame1.grid(row=1, column=0, sticky=(N,E,S,W))
+        label1.grid(row=2, column=0, sticky=E)
+        entry1.grid(row=2, column=1, sticky=W)
+        button1.grid(row=3, column=1, sticky=W)
 
     def load_my_keys(self):
         pass
@@ -60,7 +138,37 @@ class SimpleBC_Gui(Frame):
 
     def renew_my_keypairs(self):
         # TODO: 新規アドレスになるので所有コインを0に更新する
-        pass
+        def save_my_pem():
+            self.km = KeyManager()
+            my_pem = self.km.export_key_pair(p_phrase.get())
+            my_pem_hex = binascii.hexlify(my_pem).decode('ascii')
+
+            path = 'my_key_pair.pem'
+            f1 = open(path, 'a')
+            f1.write(my_pem_hex)
+            f1.close()
+            f.destroy()
+            self.um = UTXOManager(self.km.my_address())
+            self.um.my_balance = 0
+            self.update_balance()
+
+        f = Tk()
+        f.title('New Key Gene')
+        label0 = Label(f, text='Please enter pass phrase for your new key pair')
+        frame1 = ttk.Frame(f)
+        label1 = ttk.Label(frame1, text='Pass Phrase:')
+
+        p_phrase = StringVar()
+
+        entry1 = ttk.Entry(frame1, textvariable=p_phrase)
+        button1 = ttk.Button(frame1, text='Generate', command=save_my_pem)
+
+        label0.grid(row=0, column=0, sticky=(N,E,S,W))
+        frame1.grid(row=1, column=0, sticky=(N,E,S,W))
+        label1.grid(row=2, column=0, sticky=E)
+        entry1.grid(row=2, column=1, sticky=W)
+        button1.grid(row=3, column=1, sticky=W)
+
 
     def edit_conn_info(self):
         # Coreノードへの接続情報の編集
@@ -107,8 +215,8 @@ class SimpleBC_Gui(Frame):
         self.label3 = Label(lf2, text='Fee (Optional): ')
         self.label3.grid(row=2, pady=5)
 
-        self.amountBox2 = Entry(lf2, bd=2)
-        self.amountBox2.grid(row=2, column=1, pady=5, sticky='NSEW')
+        self.feeBox = Entry(lf2, bd=2)
+        self.feeBox.grid(row=2, column=1, pady=5, sticky='NSEW')
 
         # レイアウト調整
         self.label4 = Label(lf2, text='')
@@ -123,7 +231,68 @@ class SimpleBC_Gui(Frame):
         stbar.pack(side=BOTTOM, fill=X)
 
     def sendCoins(self):
-        pass
+        sendAtp = self.amountBox.get()
+        recipientKey = self.recipient_pubkey.get()
+        sendFee = self.feeBox.get()
+
+        if not sendAtp:
+            messagebox.showwarning('Warning', 'Please enter the Amount to pay.')
+        elif len(recipientKey) <= 1:
+            messagebox.showwarning('Warning', 'Please enter the Recipient Address.')
+        elif not sendFee:
+            sendFee = 0
+        else:
+            result = messagebox.askyesno('Confirmation', 'Sending {} SimpleBitcoins to :\n {}'.format(sendAtp, recipientKey))
+
+        if result:
+            print('Sending {} SimpleBitcoins to reciever:\n {}'.format(sendAtp, recipientKey))
+            utxo, idx = self.um.get_utxo_tx(0)
+
+            t = Transaction(
+                [TransactionInput(utxo, idx)],
+                [TransactionOutput(recipientKey, sendAtp)]
+            )
+
+            counter = 1
+
+            # TransactionInputが送金額に達するまでUTXOを収集しTransactionを完成させる
+            while t.is_enough_inputs(sendFee) is not True:
+                new_utxo, new_idx = self.um.get_utxo_tx(counter)
+                t.inputs.append(TransactionInput(new_utxo, new_idx))
+                counter += 1
+                if counter > len(self.um.utxo_txs):
+                    messagebox.showwarning('Short of Coinn.', 'Not enough coin to be sent...')
+                    break
+
+            if t.is_enough_inputs(sendFee) is True:
+                # お釣り用Transactionを生成
+                change = t.compute_change(sendFee)
+                t.outputs.append(TransactionOutput(self.km.my_address(), change))
+
+                to_be_signed = json.dumps(t.to_dict(), sort_keys=True)
+                signed = self.km.compute_digital_signature(to_be_signed)
+                new_tx = json.loads(to_be_signed)
+                new_tx['signature'] = signed
+                # TODO: 本来はここで出来上がったTransactionを送信する処理を入れる
+                print('signed new_tx: ', json.dumps(new_tx))
+
+                self.um.put_utxo_tx(t.to_dict())
+
+                to_be_deleted = 0
+                del_list = []
+                while to_be_deleted < counter:
+                    del_tx = self.um.get_utxo_tx(to_be_deleted)
+                    del_list.append(del_tx)
+                    to_be_deleted += 1
+
+                for dx in del_list:
+                    self.um.remove_utxo_tx(dx)
+
+        self.amountBox.delete(0, END)
+        self.feeBox.delete(0, END)
+        self.recipient_pubkey.delete(0, END)
+        self.update_balance()
+
 
 
 def main():
