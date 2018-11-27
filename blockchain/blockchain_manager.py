@@ -85,6 +85,22 @@ class BlockchainManager:
         block_string = json.dumps(block, sort_keys=True)
         return binascii.hexlify(self._get_double_sha256((block_string).encode('utf-8'))).decode('ascii')
 
+    def get_stored_transactions_from_bc(self):
+        print('get_stored_transactions_from_bc was called!')
+        current_index = 1
+        stored_transactions = []
+
+        while current_index < len(self.chain):
+            block = self.chain[current_index]
+            transactions = block['transactions']
+
+            for t in transactions:
+                stored_transactions.append(json.loads(t))
+
+            current_index += 1
+
+        return stored_transactions
+
     def get_transactions_from_orphan_blocks(self, orphan_blocks):
         current_index = 1
         new_transactions = []

@@ -6,12 +6,18 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import Button, Style
 
+from core.client_core import ClientCore as Core
 from utils.key_manager import KeyManager
 from transaction.utxo_manager import UTXOManager
 from transaction.transactions import Transaction
 from transaction.transactions import TransactionInput
 from transaction.transactions import TransactionOutput
 from transaction.transactions import CoinbaseTransaction
+from p2p.message_manager import (
+    MSG_NEW_TRANSACTION,
+    MSG_ENHANCED,
+)
+
 
 class SimpleBC_Gui(Frame):
     
@@ -27,10 +33,13 @@ class SimpleBC_Gui(Frame):
     def quit(self, event=None):
         self.parent.destroy()
 
-    def initApp(self):
+    def initApp(self, my_port, c_host, c_port):
         print('SimpleBitcoin client is now activating...: ')
         self.km = KeyManager()
         self.um = UTXOManager(self.km.my_address())
+
+        self.c_core = Core(my_port, c_host, c_port, self.update_callback)
+        self.c_core.start()
 
         # テスト用
         t1 = CoinbaseTransaction(self.km.my_address())
@@ -54,6 +63,13 @@ class SimpleBC_Gui(Frame):
     def update_balance(self):
         bal = str(self.um.my_balance)
         self.coin_balance.set(bal)
+
+    def update_callback(self):
+        print('update_callback was called!')
+        s_transactions = self.c_core.get_stored_transactions_from_bc()
+        print(s_transactions)
+        self.um.extract_utxos(s_transactions)
+        self.update_balance()
 
     def create_menu(self):
         top = self.winfo_toplevel()
@@ -134,7 +150,7 @@ class SimpleBC_Gui(Frame):
         pass
 
     def update_block_chain(self):
-        pass
+        self.c_core.send_req_full_chain_to_my_core_node()
 
     def renew_my_keypairs(self):
         # TODO: 新規アドレスになるので所有コインを0に更新する
@@ -274,7 +290,9 @@ class SimpleBC_Gui(Frame):
                 new_tx = json.loads(to_be_signed)
                 new_tx['signature'] = signed
                 # TODO: 本来はここで出来上がったTransactionを送信する処理を入れる
-                print('signed new_tx: ', json.dumps(new_tx))
+                tx_strings = json.dumps(new_tx)
+                self.c_core.send_message_to_my_core_node(MSG_NEW_TRANSACTION, tx_strings)
+                print('signed new_tx: ', tx_strings)
 
                 self.um.put_utxo_tx(t.to_dict())
 
