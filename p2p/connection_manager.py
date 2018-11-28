@@ -31,6 +31,8 @@ class ConnectionManager:
         print('Initializing ConnectionManager...')
         self.host = host
         self.port = my_port
+        self.my_c_host = None
+        self.my_c_port = None
         self.core_node_set = CoreNodeList()
         self.edge_node_set = EdgeNodeList()
         self.__add_peer((host, my_port))
@@ -43,8 +45,11 @@ class ConnectionManager:
         t = threading.Thread(target=self.__wait_for_access)
         t.start()
 
-        self.ping_timer = threading.Timer(PING_INTERVAL, self.__check_peers_connection)
-        self.ping_timer.start()
+        self.ping_timer_p = threading.Timer(PING_INTERVAL, self.__check_peers_connection)
+        self.ping_timer_p.start()
+
+        self.ping_timer_e = threading.Timer(PING_INTERVAL, self.__check_peers_connection)
+        self.ping_timer_e.start()
 
     # ユーザが指定した既知のCoreノードへ接続
     def join_network(self, host, port):
@@ -91,10 +96,12 @@ class ConnectionManager:
         self.socket.close()
         s.close()
 
-        self.ping_timer.cancel()
+        self.ping_timer_p.cancel()
+        self.ping_timer_e.cancel()
 
-        msg = self.mm.build(MSG_REMOVE, self.port)
-        self.send_msg((self.my_c_host, self.my_c_port), msg)
+        if self.my_c_host is not None:
+            msg = self.mm.build(MSG_REMOVE, self.port)
+            self.send_msg((self.my_c_host, self.my_c_port), msg)
 
     def __is_in_core_set(self, peer):
         return self.core_node_set.has_this_peer(peer)
@@ -204,8 +211,8 @@ class ConnectionManager:
             msg = self.mm.build(MSG_CORE_LIST, self.port, cl)
             self.send_msg_to_all_peer(msg)
 
-        self.ping_timer = threading.Timer(PING_INTERVAL, self.__check_peers_connection)
-        self.ping_timer.start()
+        self.ping_timer_p = threading.Timer(PING_INTERVAL, self.__check_peers_connection)
+        self.ping_timer_p.start()
 
     def __is_alive(self, target):
         try:
