@@ -167,11 +167,35 @@ class ConnectionManager:
                 return
         elif status == ('ok', OK_WITH_PAYLOAD):
             if cmd == MSG_CORE_LIST:
-                # TODO: 受信したリストを追加する際はセキュリティ的なチェックを入れるべき
-                print('Refresh the core node list...')
-                new_core_set = pickle.loads(payload.encode('utf8'))
-                print('latest core node list: ', new_core_set)
-                self.core_node_set.overwrite(new_core_set)
+                # Coreノードリストが2つ以上(=ネットワークに参加しているノードが2つ以上)の場合
+                if self.core_node_set.get_length() > 1:
+                    is_core = self.__is_in_core_set((addr[0], peer_port))
+                    if is_core:
+                        new_core_set = pickle.loads(payload.encode('utf8'))
+                        alive_node_num = 0
+                        # Coreノードかどうかの確認(厳密ではない)
+                        for c_node in new_core_set:
+                            if c_node != (self.host, self.port):
+                                is_alive = self.__is_alive(c_node)
+                                if is_alive:
+                                    alive_node_num += 1
+                        if alive_node_num == len(new_core_set) - 1:
+                            print('Refresh the core node list...')
+                            print('tatest core node list: ', new_core_set)
+                            self.core_node_set.overwrite(new_core_set)
+                        else:
+                            print('received unsafe core node list... from', (addr[0], peer_port))
+                    else:
+                        print('MSG_CORE_LIST from Unknown node', (addr[0], peer_port))
+                # ネットワークに自分しかいない場合
+                else:
+                    if self.my_c_host == addr[0] and self.my_c_port == peer_port:
+                        new_core_set = pickle.loads(payload.encode('utf8'))
+                        print('List from Central. Refresh the core node list...')
+                        print('latest core node list: ', new_core_set)
+                        self.core_node_set.overwrite(new_core_set)
+                    else:
+                        print('received unsafe core node list... from', (addr[0], peer_port))
             else:
                 self.callback((result, reason, cmd, peer_port, payload), None)
                 return
