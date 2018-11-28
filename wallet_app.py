@@ -8,6 +8,7 @@ from tkinter.ttk import Button, Style
 
 from core.client_core import ClientCore as Core
 from utils.key_manager import KeyManager
+from utils.rsa_util import RSAUtil
 from transaction.utxo_manager import UTXOManager
 from transaction.transactions import Transaction
 from transaction.transactions import TransactionInput
@@ -21,22 +22,25 @@ from p2p.message_manager import (
 
 class SimpleBC_Gui(Frame):
     
-    def __init__(self, parent):
+    def __init__(self, parent, my_port, c_host, c_port):
         Frame.__init__(self, parent)
         self.parent = parent
         self.parent.protocol('WM_DELETE_WINDOW', self.quit)
         self.coin_balance = StringVar(self.parent, '0')
         self.status_message = StringVar(self.parent, 'No coin to be sent')
-        self.initApp()
+        self.c_core = None
+        self.initApp(my_port, c_host, c_port)
         self.setupGUI()
 
     def quit(self, event=None):
+        self.c_core.shutdown()
         self.parent.destroy()
 
     def initApp(self, my_port, c_host, c_port):
         print('SimpleBitcoin client is now activating...: ')
         self.km = KeyManager()
         self.um = UTXOManager(self.km.my_address())
+        self.rsa_util = RSAUtil()
 
         self.c_core = Core(my_port, c_host, c_port, self.update_callback)
         self.c_core.start()
@@ -194,7 +198,12 @@ class SimpleBC_Gui(Frame):
         pass
 
     def show_my_block_chain(self):
-        pass
+        mychain = self.c_core.get_my_blockchain()
+        if mychain is not None:
+            mychain_str = pprint.pformat(mychain, indent=2)
+            self.display_info('Current Blockchain', mychain_str)
+        else:
+            self.display_info('Warning', 'Currently Blockchain is empty...')
 
     def setupGUI(self):
         self.parent.bind('<Control-q>', self.quit)
@@ -313,11 +322,23 @@ class SimpleBC_Gui(Frame):
 
 
 
-def main():
+def main(my_port, c_host, c_port):
     root = Tk()
-    app = SimpleBC_Gui(root)
+    app = SimpleBC_Gui(root, my_port, c_host, c_port)
     root.mainloop()
 
 
 if __name__ == '__main__':
+    args = sys.argv
+
+    if len(args) == 4:
+        my_port = int(args[1])
+        c_host = args[2]
+        c_port = int(args[3])
+    else:
+        print('Param Error')
+        print('$ wallet_app.py <my_port> <core_node_ip_address> <core_node_port_num>')
+        quit()
+
+    main(my_port, c_host, c_port)
     main()

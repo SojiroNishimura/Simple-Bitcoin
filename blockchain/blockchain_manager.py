@@ -64,19 +64,58 @@ class BlockchainManager:
 
         return True
 
-    def is_valid(self, chain):
-        last_block = chain[0]
+    def has_this_output_in_my_chain(self, transaction_output):
+        """
+        保存されているブロックチェーン内ですでにtransaction_outputが他のTransactionのInputとして
+        使用されていないか確認する
+        """
+        print('has_this_output_in_my_chain was called!')
         current_index = 1
 
-        while current_index < len(chain):
-            block = self.chain[current_index]
-            if block['previous_block'] != self.get_hash(last_block):
-                return False
+        if len(self.chain) == 1:
+            print('only the genesis block is in my chain')
+            return False
 
-            last_block = block
+        while current_index < len(self.chain):
+            block = self.chain[current_index]
+            transactions = block['transactions']
+
+            for t in transactions:
+                t = json.loads(t)
+                if t['t_type'] == 'basic' or t['t_type'] == 'coinbase_transaction':
+                    if t['inputs'] != []:
+                        inputs_t = t['inputs']
+                        for it in inputs_t:
+                            print(it['transaction']['outputs'][it['output_index']])
+                            if it['transaction']['outputs'][it['output_index']] == transaction_output:
+                                print('This TransactionOutput was already used', transaction_output)
+                                return True
             current_index += 1
 
-        return True
+        return False
+
+    def is_valid_output_in_my_chain(self, transaction_output):
+        """
+        チェーン内で認知されていない不正なTransactionを使ってないか確認
+        (有効化するとテスト用にCoinbaseTransactionができなくなる)
+        """
+        print('is_valid_output_in_my_chain was called!')
+        current_index = 1
+
+        while current_index < len(self.chain):
+            block = self.chain[current_index]
+            transactions = block['transactions']
+
+            for t in transactions:
+                t = json.loads(t)
+                if t['t_type'] == 'basic' or ['t_type'] == 'coinbase_transaction':
+                    outputs_t = t['outputs']
+                    for ot in outputs_t:
+                        if ot == transaction_output:
+                            return True
+            current_index += 1
+
+        return False
 
     def _get_double_sha256(self, message):
         return hashlib.sha256(hashlib.sha256(message).digest()).digest()

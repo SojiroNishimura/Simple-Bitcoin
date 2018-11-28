@@ -6,6 +6,26 @@ class UTXOManager:
         self.utxo_txs = []
         self.my_balance = 0
 
+    def is_sbc_transaction(self, tx):
+        """
+        暗号通貨用のTransactionかそれ以外かを判定する
+        タプルでTransactions種別も返す
+        """
+        print(tx['t_type'])
+        tx_t = tx['t_type']
+
+        t_basic = 'basic'
+        t_coinbase = 'coinbase_transaction'
+        unknown = 'unknown'
+
+        if tx_t != t_basic:
+            if tx_t != t_coinbase:
+                return False, unknown
+            else:
+                return True, t_coinbase
+        else:
+            return True, t_basic
+
     def extract_utxos(self, txs):
         """
         与えられたTransaction群の中からUTXOとして利用可能なもののみを抽出して保存する

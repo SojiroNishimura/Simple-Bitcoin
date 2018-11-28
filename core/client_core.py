@@ -7,6 +7,7 @@ from p2p.connection_manager_4edge import ConnectionManager4Edge
 from p2p.my_protocol_message_handler import MyProtocolMessageHandler
 from p2p.message_manager import (
     MessageManager,
+    MSG_REQUEST_FULL_CHAIN,
     RSP_FULL_CHAIN,
     MSG_ENHANCED,
 )
@@ -91,7 +92,7 @@ class ClientCore:
     def send_req_full_chain_to_my_core_node(self):
         print('send_req_full_chain_to_my_core_node was called')
         new_message = self.cm.get_message_text(MSG_REQUEST_FULL_CHAIN)
-        self.cm.send_msg((self.my_central_host, self.my_central_port), new_message)
+        self.cm.send_msg((self.my_core_host, self.my_core_port), new_message)
 
     def __get_myip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

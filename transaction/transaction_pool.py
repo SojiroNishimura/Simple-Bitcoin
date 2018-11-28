@@ -27,7 +27,44 @@ class TransactionPool:
             print('Currently, it seems transaction pool is empty...')
             return []
 
+    def get_total_fee_from_tp(self):
+        """
+        TransactionPool内に格納されている全てのTransactionの手数料の合計値を算出する
+        """
+        print('get_total_fee_from_tp was called')
+        transactions = self.transactions
+        result = 0
+        for t in transactions:
+            checked = self.check_type_of_transaction(t)
+            if checked:
+                total_in = sum(i['transaction']['outputs'][i['output_index']]['value'] for i in t['inputs'])
+                total_out = sum(o['value'] for o in t['outputs'])
+                delta = total_in - total_out
+                result += delta
+
+        return result
+
+    def check_type_of_transaction(self, transaction):
+        if transaction['t_type'] == 'basic' or transaction['t_type'] == 'coinbase_transaction':
+            return True
+        else:
+            return False
+
     def renew_my_transactions(self, transactions):
         with self.lock:
             print('transaction pool will be renewed to ...', transactions)
             self.transactions = transactions
+
+    def has_this_output_in_my_tp(self, transaction_output):
+        """
+        TransactionPool内ですでにtransaction_outputがInputとして使われていないか確認
+        """
+        print('has_this_output_in_my_tp was called')
+        transactions = self.transactions
+        for t in transactions:
+            inputs_t = t['inputs']
+            for it in inputs_t:
+                if it == transaction_output:
+                    return True
+
+        return False
