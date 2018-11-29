@@ -1,10 +1,16 @@
 import os
+import sys
 import binascii
 import json
+import pprint
+import base64
+import copy
 
 from tkinter import *
 from tkinter import messagebox
+from tkinter import filedialog
 from tkinter.ttk import Button, Style
+from tkinter import ttk
 
 from core.client_core import ClientCore as Core
 from utils.key_manager import KeyManager
@@ -42,7 +48,7 @@ class SimpleBC_Gui(Frame):
         self.um = UTXOManager(self.km.my_address())
         self.rsa_util = RSAUtil()
 
-        self.c_core = Core(my_port, c_host, c_port, self.update_callback)
+        self.c_core = Core(my_port, c_host, c_port, self.update_callback, self.get_message_callback)
         self.c_core.start()
 
         # テスト用
@@ -58,8 +64,13 @@ class SimpleBC_Gui(Frame):
         self.um.extract_utxos(transactions)
         self.update_balance()
 
-    def display_info(self, info):
-        pass
+    def display_info(self, title, info):
+        f = Tk()
+        label = Label(f, text=title)
+        label.pack()
+        info_area = Text(f, width=70, height=50)
+        info_area.insert(INSERT, info)
+        info_area.pack()
 
     def update_status(self, info):
         self.status_message.set(info)
@@ -256,9 +267,11 @@ class SimpleBC_Gui(Frame):
         stbar.pack(side=BOTTOM, fill=X)
 
     def sendCoins(self):
-        sendAtp = self.amountBox.get()
+        sendAtp = int(self.amountBox.get())
         recipientKey = self.recipient_pubkey.get()
-        sendFee = self.feeBox.get()
+        sendFee = int(self.feeBox.get())
+
+        utxo_len = len(self.um.utxo_txs)
 
         if not sendAtp:
             messagebox.showwarning('Warning', 'Please enter the Amount to pay.')
@@ -270,7 +283,12 @@ class SimpleBC_Gui(Frame):
             result = messagebox.askyesno('Confirmation', 'Sending {} SimpleBitcoins to :\n {}'.format(sendAtp, recipientKey))
 
         if result:
-            print('Sending {} SimpleBitcoins to reciever:\n {}'.format(sendAtp, recipientKey))
+            if utxo_len > 0:
+                print('Sending {} SimpleBitcoins to reciever:\n {}'.format(sendAtp, recipientKey))
+            else:
+                messagebox.showwarning('Short of coin.', 'Not enough coin to be sent...')
+                return
+
             utxo, idx = self.um.get_utxo_tx(0)
 
             t = Transaction(
@@ -298,7 +316,6 @@ class SimpleBC_Gui(Frame):
                 signed = self.km.compute_digital_signature(to_be_signed)
                 new_tx = json.loads(to_be_signed)
                 new_tx['signature'] = signed
-                # TODO: 本来はここで出来上がったTransactionを送信する処理を入れる
                 tx_strings = json.dumps(new_tx)
                 self.c_core.send_message_to_my_core_node(MSG_NEW_TRANSACTION, tx_strings)
                 print('signed new_tx: ', tx_strings)

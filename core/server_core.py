@@ -14,10 +14,12 @@ from utils.key_manager import KeyManager
 from utils.rsa_util import RSAUtil
 from p2p.connection_manager import ConnectionManager
 from p2p.my_protocol_message_handler import MyProtocolMessageHandler
+from p2p.my_protocol_message_store import MessageStore
 from p2p.message_manager import (
     MessageManager,
     MSG_NEW_TRANSACTION,
     MSG_NEW_BLOCK,
+    MSG_REQUEST_FULL_CHAIN,
     RSP_FULL_CHAIN,
     MSG_ENHANCED,
 )
@@ -42,7 +44,7 @@ class ServerCore:
         self.mpm = MyProtocolMessageHandler()
         self.core_node_host = core_node_host
         self.core_node_port = core_node_port
-        self.my_protocol_message_store = []
+        self.mpm_store = MessageStore()
 
         self.bb = BlockBuilder()
         self.flag_stop_block_build = False
@@ -146,7 +148,6 @@ class ServerCore:
     def __handle_message(self, msg, is_core, peer=None):
         if peer != None:
             if msg[2] == MSG_REQUEST_FULL_CHAIN:
-                # MSG_REQUEST_FULL_CHAIN
                 print('Send our latest blockchain for reply to : ', peer)
                 mychain = self.bm.get_my_blockchain()
                 chain_data = pickle.dumps(mychain, 0).decode()
@@ -162,36 +163,24 @@ class ServerCore:
                     print('this is already pooled transaction: ', new_transaction)
                     return
 
-                    if not is_sbc_t:
-                        print('this is not SimpleBitcoin transaction: ', new_transaction)
-                    else:
-                        # テスト用に最初のブロックだけ未知のCoinbaseTransactionを許可する暫定処置
-                        if self.bm.get_my_chain_length() != 1:
-                            checked = self._check_availability_of_transaction(new_transaction)
-                            if not checked:
-                                print('Transaction Verification Error')
-                                return
-                    self.tp.set_new_transaction(new_transaction)
-                    
-                    if not is_core:
-                        self.tp.set_new_transaction(new_transaction)
-                        new_message = self.cm.get_message_text(MSG_NEW_TRANSACTION, json.dumps(new_transaction))
-                        self.cm.send_msg_to_all_peer(new_message)
+                if not is_sbc_t:
+                    print('this is not SimpleBitcoin transaction: ', new_transaction)
+                    is_verified = self.rsa_util.verify_general_transaction_sig(new_transaction)
+                    if not is_verified:
+                        print('Transaction Verification Error')
+                        return
                 else:
-                    if not is_sbc_t:
-                        print('this is not SimpleBitcoin transaction: ', new_transaction)
-                    else:
-                        # テスト用に最初のブロックだけ未知のCoinbaseTransactionを許可する暫定処置
-                        if self.bm.get_my_chain_length() != 1:
-                            checked = self._check_availablity_of_transaction(new_transaction)
-                            if not checked:
-                                print('Transaction Verification Error')
-                                return
+                    # テスト用に最初のブロックだけ未知のCoinbaseTransactionを許可する暫定処置
+                    if self.bm.get_my_chain_length() != 1:
+                        checked = self._check_availability_of_transaction(new_transaction)
+                        if not checked:
+                            print('Transaction Verification Error')
+                            return
                     self.tp.set_new_transaction(new_transaction)
 
-                    if not is_core:
-                        new_message = self.cm.get_message_text(MSG_NEW_TRANSACTION, json.dumps(new_transaction))
-                        self.cm.send_msg_to_all_peer(new_message)
+                if not is_core:
+                    new_message = self.cm.get_message_text(MSG_NEW_TRANSACTION, json.dumps(new_transaction))
+                    self.cm.send_msg_to_all_peer(new_message)
             elif msg[2] == MSG_NEW_BLOCK:
                 if not is_core:
                     print('block received from unknown')
@@ -233,10 +222,10 @@ class ServerCore:
                     print('Received blockchain is useless...')
             elif msg[2] == MSG_ENHANCED:
                 print('received enhanced message', msg[4])
-                current_messages = self.my_protocol_message_store
+                current_messages = self.mpm_store
                 has_same = False
                 if not msg[4] in current_messages:
-                    self.my_protocol_message_store.append(msg[4])
+                    self.mpm_store.append(msg[4])
                     self.mpm.handle_message(msg[4], self.__core_api)
 
     def _check_availability_of_transaction(self, transaction):
@@ -331,6 +320,10 @@ class ServerCore:
                         if insentive != fee_for_block:
                             print('Invalid value in fee for CoinbaseTransaction', insentive)
                             return False
+            else:
+                is_verified = self.rsa_util.verify_general_transaction_sig(t)
+                if not is_verified:
+                    return False
 
         print('ok. this block is acceptable')
         return True

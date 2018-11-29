@@ -64,6 +64,20 @@ class ConnectionManager:
         s.sendall(msg.encode('utf-8'))
         s.close()
 
+    def get_message_text(self, msg_type, payload = None):
+        """
+        指定したメッセージ種別のプロトコルメッセージを作成して返却する
+
+        params:
+            msg_type : 作成したいメッセージの種別をMessageManagerの規定に従い指定
+            payload : メッセージにデータを格納したい場合に指定する
+
+        return:
+            msgtxt : MessageManagerのbuild_messageによって生成されたJSON形式のメッセージ
+        """
+        msgtxt = self.mm.build(msg_type, self.port, payload)
+        return msgtxt
+
     def send_msg(self, peer, msg):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

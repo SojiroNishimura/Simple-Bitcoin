@@ -11,12 +11,14 @@ class Transaction:
         self.inputs = inputs
         self.outputs = outputs
         self.timestamp = time()
+        self.t_type = 'basic'
 
     def to_dict(self):
         d = {
             'inputs': list(map(TransactionInput.to_dict, self.inputs)),
             'outputs': list(map(TransactionOutput.to_dict, self.outputs)),
             'timestamp': self.timestamp,
+            't_type': self.t_type
         }
         return d
 
@@ -75,12 +77,13 @@ class CoinbaseTransaction(Transaction):
         self.inputs = []
         self.outputs = [TransactionOutput(recipient_address, value)]
         self.timestamp = time()
+        self.t_type = 'coinbase_transaction'
 
     def to_dict(self):
         d = {
             'inputs': [],
             'outputs': list(map(TransactionOutput.to_dict, self.outputs)),
             'timestamp': self.timestamp,
-            'coinbase_transaction': True,
+            't_type': self.t_type,
         }
         return d

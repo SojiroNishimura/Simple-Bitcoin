@@ -11,7 +11,7 @@ class UTXOManager:
         暗号通貨用のTransactionかそれ以外かを判定する
         タプルでTransactions種別も返す
         """
-        print(tx['t_type'])
+        print('is_sbc_transaction was called', tx['t_type'])
         tx_t = tx['t_type']
 
         t_basic = 'basic'

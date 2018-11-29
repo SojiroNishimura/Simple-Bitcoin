@@ -4,6 +4,7 @@ import pickle
 from blockchain.blockchain_manager import BlockchainManager
 from blockchain.block_builder import BlockBuilder
 from p2p.connection_manager_4edge import ConnectionManager4Edge
+from p2p.my_protocol_message_store import MessageStore
 from p2p.my_protocol_message_handler import MyProtocolMessageHandler
 from p2p.message_manager import (
     MessageManager,
@@ -28,8 +29,8 @@ class ClientCore:
         self.my_core_host = core_host
         self.my_core_port = core_port
         self.cm = ConnectionManager4Edge(self.my_ip, my_port, core_host, core_port, self.__handle_message)
-        self.mpm = MyProtocolMessageHandler()
-        self.my_protocol_message_store = []
+        self.mpmh = MyProtocolMessageHandler()
+        self.mpm_store = MessageStore()
 
         self.bb = BlockBuilder()
         my_genesis_block = self.bb.generate_genesis_block()
@@ -50,10 +51,10 @@ class ClientCore:
         return self.client_state
 
     def get_my_protocol_messages(self):
-        if self.my_protocol_message_store != []:
-            return self.my_protocol_message_store
-        else:
-            return None
+        return self.mpm_store.get_list()
+
+    def get_my_blockchain(self):
+        return self.bm.get_my_blockchain()
 
     def __client_api(self, request, message):
         if request == 'pass_message_to_client_application':
