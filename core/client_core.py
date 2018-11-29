@@ -20,7 +20,7 @@ STATE_SHUTTING_DOWN = 2
 
 
 class ClientCore:
-    def __init__(self, my_port=50082, core_host=None, core_port=None, callback=None):
+    def __init__(self, my_port=50082, core_host=None, core_port=None, callback=None, mpmh_callback=None):
         self.client_state = STATE_INIT
         print('Initializing ClientCore...')
         self.my_ip = self.__get_myip()
@@ -31,6 +31,7 @@ class ClientCore:
         self.cm = ConnectionManager4Edge(self.my_ip, my_port, core_host, core_port, self.__handle_message)
         self.mpmh = MyProtocolMessageHandler()
         self.mpm_store = MessageStore()
+        self.mpmh_callback = mpmh_callback
 
         self.bb = BlockBuilder()
         my_genesis_block = self.bb.generate_genesis_block()
@@ -58,7 +59,9 @@ class ClientCore:
 
     def __client_api(self, request, message):
         if request == 'pass_message_to_client_application':
-            self.my_protocol_message_store.append(message)
+            print('Client Core API: pass_message_to_client_application')
+            self.mpm_store.add(msg)
+            self.mpmh_callback(message)
         elif request == 'api_type':
             return 'client_core_api'
         else:
@@ -83,7 +86,7 @@ class ClientCore:
         elif msg[2] == MSG_ENHANCED:
             # P2P Network を単なるトランスポートして使っているアプリケーションが独自拡張したメッセージはここで処理する。
             # SimpleBitcoin としてはこの種別は使わない
-            self.mpm.handle_message(msg[4], self.__client_api)
+            self.mpmh.handle_message(msg[4], self.__client_api)
 
 
     def send_message_to_my_core_node(self, msg_type, msg):

@@ -20,6 +20,7 @@ from transaction.transactions import Transaction
 from transaction.transactions import TransactionInput
 from transaction.transactions import TransactionOutput
 from transaction.transactions import CoinbaseTransaction
+from transaction.transactions import EngravedTransaction
 from p2p.message_manager import (
     MSG_NEW_TRANSACTION,
     MSG_ENHANCED,
@@ -79,6 +80,17 @@ class SimpleBC_Gui(Frame):
         bal = str(self.um.my_balance)
         self.coin_balance.set(bal)
 
+    def get_message_callback(self, target_message):
+        print('get_message_callback was called!')
+
+        if target_message['message_type'] == 'engraved':
+            sender_name = target_message['sender_alt_name']
+            msg_body = base64.b64decode(binascii.unhexlify(target_message['message'])).decode('utf-8')
+            timestamp = datetime.datetime.fromtimestamp(int(target_message['timestamp']))
+            messagebox.showwarning(
+                'You received a new engraved message!',
+                '{} :\n {} \n {}'.format(sender_name, msg_body, timestamp))
+
     def update_callback(self):
         print('update_callback was called!')
         s_transactions = self.c_core.get_stored_transactions_from_bc()
@@ -108,6 +120,7 @@ class SimpleBC_Gui(Frame):
         self.menuBar.add_cascade(label='Advance', menu=self.subMenu3)
         self.subMenu3.add_command(label='Show logs', command=self.open_log_window)
         self.subMenu3.add_command(label='Show Blockchain', command=self.show_my_block_chain)
+        self.subMenu3.add_command(label='Engrave Message', command=self.engrave_message)
 
     def show_my_address(self):
         f = Tk()
@@ -336,6 +349,45 @@ class SimpleBC_Gui(Frame):
         self.feeBox.delete(0, END)
         self.recipient_pubkey.delete(0, END)
         self.update_balance()
+
+    def engrave_message(self):
+        """
+        ブロックチェーンにTwitter風のメッセージを格納する
+        """
+        def send_e_message():
+            new_message = {}
+            msg_txt = entry.get().encode('utf-8')
+
+            msg = EngravedTransaction(self.km.my_address(),
+                                        'Testman',
+                                        binascii.hexlify(base64.b64encode(msg_txt)).decode('ascii'))
+
+            to_be_signed = json.dumps(msg.to_dict(), sort_keys=True)
+            signed = self.km.compute_digital_signature(to_be_signed)
+            new_tx = json.loads(to_be_signed)
+            new_tx['signature'] = signed
+            tx_strings = json.dumps(new_tx)
+            self.c_core.send_message_to_my_core_node(MSG_NEW_TRANSACTION, tx_strings)
+
+            new_tx2 = copy.deepcopy(new_tx)
+            new_tx2['message_type'] = 'engraved'
+            tx_strings2 = json.dumps(new_tx2)
+            self.c_core.send_message_to_my_core_node(MSG_ENHANCED, tx_strings2)
+            f.destroy()
+
+        f = Tk()
+        f.title('Engrave New Message')
+        label0 = Label(f, text='Any idea?')
+        frame1 = ttk.Frame(f)
+        label = ttk.Label(frame1, text='Message:')
+        entry = ttk.Entry(frame1, width=30)
+        button1 = ttk.Button(frame1, text='Engrave this on Blockchain', command=send_e_message)
+
+        label0.grid(row=0, column=0, sticky=(N,E,S,W))
+        frame1.grid(row=1,column=0,sticky=(N,E,S,W))
+        label.grid(row=2,column=0,sticky=E)
+        entry.grid(row=2,column=1,sticky=W)
+        button1.grid(row=3,column=1,sticky=W)
 
 
 

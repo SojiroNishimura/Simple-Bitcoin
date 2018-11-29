@@ -87,3 +87,33 @@ class CoinbaseTransaction(Transaction):
             't_type': self.t_type,
         }
         return d
+
+
+class EngravedTransaction:
+    """
+    value以外に任意のメッセージをTransactionに付加できる拡張Transactionタイプ
+    """
+    def __init__(self, sender, sender_alt_name, message, icon_url=None, reply_to=None, original_reply_to=None):
+        self.sender = sender
+        self.sender_alt_name = sender_alt_name
+        self.icon = icon_url
+        self.message = message
+        self.timestamp = time()
+        self.reply_to = reply_to
+        self.original_reply_to = original_reply_to
+        self.content_id = sender + str(self.timestamp)
+        self.t_type = 'engraved'
+
+    def to_dict(self):
+        d = {
+            'sender': self.sender,
+            'sender_alt_name': self.sender_alt_name,
+            'icon': self.icon,
+            'timestamp': self.timestamp,
+            'message': self.message,
+            'reply_to': self.reply_to,
+            'original_reply_to': self.original_reply_to,
+            'id': self.content_id,
+            't_type': self.t_type,
+        }
+        return d
