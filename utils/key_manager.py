@@ -38,6 +38,15 @@ class KeyManager:
         verifier = PKCS1_v1_5.new(sender_public_key)
         return verifier.verify(hashed_message, binascii.unhexlify(signature))
 
+    def encrypt_with_my_pubkey(self, target):
+        encrypto = self._public_key.encrypt(target, 0)
+        return encrypto
+
+    def decrypt_with_private_key(self, target):
+        decrypto = self._private_key.decrypt(target)
+        print('decrypto', decrypto)
+        return decrypto
+
     def export_key_pair(self, pass_phrase):
         """
         鍵ペアをPEMフォーマットで書き出す(バックアップ用)
