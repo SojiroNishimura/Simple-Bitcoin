@@ -60,7 +60,7 @@ class ClientCore:
     def __client_api(self, request, message):
         if request == 'pass_message_to_client_application':
             print('Client Core API: pass_message_to_client_application')
-            self.mpm_store.add(msg)
+            self.mpm_store.add(message)
             self.mpmh_callback(message)
         elif request == 'api_type':
             return 'client_core_api'
