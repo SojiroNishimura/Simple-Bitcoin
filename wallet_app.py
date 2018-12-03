@@ -15,6 +15,7 @@ from tkinter import ttk
 from core.client_core import ClientCore as Core
 from utils.key_manager import KeyManager
 from utils.rsa_util import RSAUtil
+from utils.aes_util import AESUtil
 from transaction.utxo_manager import UTXOManager
 from transaction.transactions import Transaction
 from transaction.transactions import TransactionInput
@@ -50,7 +51,7 @@ class SimpleBC_Gui(Frame):
         self.rsa_util = RSAUtil()
 
         self.c_core = Core(my_port, c_host, c_port, self.update_callback, self.get_message_callback)
-        self.c_core.start()
+        self.c_core.start(self.km.my_address())
 
         # テスト用
         t1 = CoinbaseTransaction(self.km.my_address())
@@ -83,7 +84,28 @@ class SimpleBC_Gui(Frame):
     def get_message_callback(self, target_message):
         print('get_message_callback was called!')
 
-        if target_message['message_type'] == 'engraved':
+        if target_message['message_type'] == 'cipher_message':
+            try:
+                encrypted_key = base64.b64decode(binascii.unhexlify(target_message['enc_key']))
+                print('encrypted_key: ', encrypted_key)
+                decrypted_key = self.km.decrypt_with_private_key(encrypted_key)
+                print('decrypted_key: ', binascii.hexlify(decrypted_key).decode('ascii'))
+
+                aes_util = AESUtil()
+                decrypted_message = aes_util.decrypt_with_key(base64.b64decode(binascii.unhexlify(target_message['body'])), decrypted_key)
+                print(decrypted_message.decode('utf-8'))
+                """
+                現状使わないが一応メッセージを作っておく
+                message = {
+                    'from': binascii.unhexlify(target_message['sender']),
+                    'message': decrypted_message.decode('utf-8'),
+                }
+                message_4display = pprint.pformat(message, indent=2)
+                """
+                messagebox.showwarning('You received an instant encrypted message!', decrypted_message.decode('utf-8'))
+            except Exception as e:
+                print(e, 'error occured')
+        elif target_message['message_type'] == 'engraved':
             sender_name = target_message['sender_alt_name']
             msg_body = base64.b64decode(binascii.unhexlify(target_message['message'])).decode('utf-8')
             timestamp = datetime.datetime.fromtimestamp(int(target_message['timestamp']))
@@ -118,6 +140,7 @@ class SimpleBC_Gui(Frame):
 
         self.subMenu3 = Menu(self.menuBar, tearoff=0)
         self.menuBar.add_cascade(label='Advance', menu=self.subMenu3)
+        self.subMenu3.add_command(label='Send Encrypted Instant Message', command=self.send_instant_message)
         self.subMenu3.add_command(label='Show logs', command=self.open_log_window)
         self.subMenu3.add_command(label='Show Blockchain', command=self.show_my_block_chain)
         self.subMenu3.add_command(label='Engrave Message', command=self.engrave_message)
@@ -388,6 +411,47 @@ class SimpleBC_Gui(Frame):
         label.grid(row=2,column=0,sticky=E)
         entry.grid(row=2,column=1,sticky=W)
         button1.grid(row=3,column=1,sticky=W)
+
+    def send_instant_message(self):
+        def send_message():
+            r_pkey = entry1.get()
+            print('pubkey', r_pkey)
+            new_message = {}
+            aes_util = AESUtil()
+            cipher_txt = aes_util.encrypt(entry2.get())
+            new_message['message_type'] = 'cipher_message'
+            new_message['recipient'] = r_pkey
+            new_message['sender'] = self.km.my_address()
+            new_message['body'] = binascii.hexlify(base64.b64encode(cipher_txt)).decode('ascii')
+
+            key = aes_util.get_aes_key()
+            encrypted_key = self.rsa_util.encrypt_with_pubkey(key, r_pkey)
+            print('encrypted_key: ', encrypted_key[0])
+            new_message['enc_key'] = binascii.hexlify(base64.b64encode(encrypted_key[0])).decode('ascii')
+            msg_type = MSG_ENHANCED
+            message_strings = json.dumps(new_message)
+            self.c_core.send_message_to_my_core_node(msg_type, message_strings)
+            f.destroy()
+
+        f = Tk()
+        f.title('New Message')
+        label0 = Label(f, text='Please input recipient address and message')
+        frame1 = ttk.Frame(f)
+        label1 = ttk.Label(frame1, text='Recipient')
+        pkey = StringVar()
+        entry1 = ttk.Entry(frame1, textvariable=pkey)
+        label2 = ttk.Label(frame1, text='Message: ')
+        message = StringVar()
+        entry2 = ttk.Entry(frame1, textvariable=message)
+        button1 = ttk.Button(frame1, text='Send Message', command=send_message)
+
+        label0.grid(row=0, column=0, sticky=(N,E,S,W))
+        frame1.grid(row=1, column=0, sticky=(N,E,S,W))
+        label1.grid(row=2, column=0, sticky=E)
+        entry1.grid(row=2, column=1, sticky=W)
+        label2.grid(row=3, column=0, sticky=E)
+        entry2.grid(row=3, column=1, sticky=W)
+        button1.grid(row=4, column=1, sticky=W)
 
 
 

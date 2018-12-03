@@ -102,7 +102,7 @@ class ConnectionManager:
         current_list = self.edge_node_set.get_list()
         for edge in current_list:
             print('messge will be sent to ...', edge)
-            self.send_msg(edge, msg)
+            self.send_msg((edge[0], edge[1]), msg)
 
     def connection_close(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -116,6 +116,9 @@ class ConnectionManager:
         if self.my_c_host is not None:
             msg = self.mm.build(MSG_REMOVE, self.port)
             self.send_msg((self.my_c_host, self.my_c_port), msg)
+
+    def has_this_edge(self, pubkey_address):
+        return self.edge_node_set.has_this_edge(pubkey_address)
 
     def __is_in_core_set(self, peer):
         return self.core_node_set.has_this_peer(peer)
@@ -163,24 +166,18 @@ class ConnectionManager:
                 self.send_msg_to_all_peer(msg)
                 self.send_msg_to_all_edge(msg)
             elif cmd == MSG_PING:
-                return
+                pass
             elif cmd == MSG_REQUEST_CORE_LIST:
                 print('List for Core nodes was requested!!')
                 cl = pickle.dumps(self.core_node_set, 0).decode()
-                msg = self.mm.build(MSG_CORE_LIST, self.port, cl)
-                self.send_msg((addr[0], peer_port), msg)
-            elif cmd == MSG_ADD_AS_EDGE:
-                print('ADD request for Edge node was received!!')
-                self.__add_edge_node((addr[0], peer_port))
-                cl = pickle.dumps(self.core_node_set.get_list(), 0).decode()
                 msg = self.mm.build(MSG_CORE_LIST, self.port, cl)
                 self.send_msg((addr[0], peer_port), msg)
             elif cmd == MSG_REMOVE_EDGE:
                 print('REMOE_EDGE request was received!! from ', addr[0], peer_port)
                 self.__remove_edge_node((addr[0], peer_port))
             else:
-                self.callback((result, reason, cmd, peer_port, payload), (addr[0], peer_port))
-                return
+                is_core = self.__is_in_core_set((addr[0], peer_port))
+                self.callback((result, reason, cmd, peer_port, payload), is_core,  (addr[0], peer_port))
         elif status == ('ok', OK_WITH_PAYLOAD):
             if cmd == MSG_CORE_LIST:
                 # Coreノードリストが2つ以上(=ネットワークに参加しているノードが2つ以上)の場合
@@ -212,9 +209,15 @@ class ConnectionManager:
                         self.core_node_set.overwrite(new_core_set)
                     else:
                         print('received unsafe core node list... from', (addr[0], peer_port))
+            elif cmd == MSG_ADD_AS_EDGE:
+                print('ADD request for Edge node was received!!')
+                self.__add_edge_node((addr[0], peer_port, payload))
+                cl = pickle.dumps(self.core_node_set.get_list(), 0).decode()
+                msg = self.mm.build(MSG_CORE_LIST, self.port, cl)
+                self.send_msg((addr[0], peer_port), msg)
             else:
-                self.callback((result, reason, cmd, peer_port, payload), None)
-                return
+                is_core = self.__is_in_core_set((addr[0], peer_port))
+                self.callback((result, reason, cmd, peer_port, payload), is_core, None)
         else:
             print('Unexpected status', status)
 
@@ -253,6 +256,17 @@ class ConnectionManager:
 
         self.ping_timer_p = threading.Timer(PING_INTERVAL, self.__check_peers_connection)
         self.ping_timer_p.start()
+
+    def __check_edges_connection(self):
+        print('check_edges_connection was called')
+        current_edge_list = self.edge_node_set.get_list()
+        dead_e_node_set = list(filter(lambda p: not self.__is_alive((p[0], p[1])), current_edge_list))
+
+        if dead_e_node_set:
+            print('Removing ', dead_e_node_set)
+            current_edge_list = current_edge_list - set(dead_e_node_set)
+            self.edge_node_set.overwrite(current_edge_list)
+        print('current edge node list: ', current_edge_list)
 
     def __is_alive(self, target):
         try:

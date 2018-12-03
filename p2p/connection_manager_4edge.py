@@ -37,7 +37,8 @@ class ConnectionManager4Edge(object):
         self.ping_timer = threading.Timer(PING_INTERVAL, self.__send_ping)
         self.ping_timer.start()
 
-    def connect_to_core_node(self):
+    def connect_to_core_node(self, my_pubkey=None):
+        self.my_pubkey = my_pubkey
         self.__connect_to_P2PNW(self.my_core_host, self.my_core_port)
 
     def send_msg(self, peer, msg):
@@ -57,7 +58,7 @@ class ConnectionManager4Edge(object):
                 new_core = self.core_node_set.get_c_node_info()
                 self.my_core_host = new_core[0]
                 self.my_core_port = new_core[1]
-                self.connect_to_core_node()
+                self.connect_to_core_node(self.my_pubkey)
                 self.send_msg((new_core[0], new_core[1]), msg)
             else:
                 print('No core node found in our list...')
@@ -73,7 +74,7 @@ class ConnectionManager4Edge(object):
     def __connect_to_P2PNW(self, host, port):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
-        msg = self.mm.build(MSG_ADD_AS_EDGE, self.port)
+        msg = self.mm.build(MSG_ADD_AS_EDGE, self.port, self.my_pubkey)
         print(msg)
         s.sendall(msg.encode('utf-8'))
         s.close()
@@ -152,7 +153,7 @@ class ConnectionManager4Edge(object):
                 new_core = self.core_node_set.get_c_node_info()
                 self.my_core_host = new_core[0]
                 self.my_core_port = new_core[1]
-                self.connect_to_core_node()
+                self.connect_to_core_node(self.my_pubkey)
             else:
                 print('No core node found in our list...')
                 self.ping_timer.cancel()

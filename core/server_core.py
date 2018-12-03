@@ -41,7 +41,7 @@ class ServerCore:
         print('Server IP address is set to ...', self.my_ip)
         self.my_port = my_port
         self.cm = ConnectionManager(self.my_ip, self.my_port, self.__handle_message)
-        self.mpm = MyProtocolMessageHandler()
+        self.mpmh = MyProtocolMessageHandler()
         self.core_node_host = core_node_host
         self.core_node_port = core_node_port
         self.mpm_store = MessageStore()
@@ -132,18 +132,29 @@ class ServerCore:
         self.bb_timer.start()
 
     def __core_api(self, request, message):
-        msg_type = MSG_ENHANCED
+        print('server_core:__core_api', request)
 
         if request == 'send_message_to_all_peer':
-            new_message = self.cm.get_message_text(msg_type, message)
+            new_message = self.cm.get_message_text(MSG_ENHANCED, message)
             self.cm.send_msg_to_all_peer(new_message)
             return 'ok'
         elif request == 'send_message_to_all_edge':
-            new_message = self.cm.get_message_text(msg_type, message)
+            new_message = self.cm.get_message_text(MSG_ENHANCED, message)
             self.cm.send_msg_to_all_edge(new_message)
             return 'ok'
         elif request == 'api_type':
             return 'server_core_api'
+        elif request == 'send_message_to_this_pubkey_address':
+            print('send_message_to_this_pubkey_address', message[0])
+            msg_txt = self.cm.get_message_text(MSG_ENHANCED, message[1])
+            check_result, target_host, target_port = self.cm.has_this_edge(message[0])
+            print('check_result', check_result)
+            if check_result:
+                print('sending cipher direct message to...', target_host, target_port)
+                self.cm.send_msg((target_host, target_port), msg_txt)
+                return 'ok'
+            else:
+                return None
 
     def __handle_message(self, msg, is_core, peer=None):
         if peer != None:
@@ -176,6 +187,7 @@ class ServerCore:
                         if not checked:
                             print('Transaction Verification Error')
                             return
+
                     self.tp.set_new_transaction(new_transaction)
 
                 if not is_core:
@@ -222,11 +234,11 @@ class ServerCore:
                     print('Received blockchain is useless...')
             elif msg[2] == MSG_ENHANCED:
                 print('received enhanced message', msg[4])
-                current_messages = self.mpm_store
-                has_same = False
-                if not msg[4] in current_messages:
-                    self.mpm_store.append(msg[4])
-                    self.mpm.handle_message(msg[4], self.__core_api)
+                has_same = self.mpm_store.has_this_msg(msg[4])
+
+                if not has_same:
+                    self.mpm_store.add(msg[4])
+                    self.mpmh.handle_message(msg[4], self.__core_api, is_core)
 
     def _check_availability_of_transaction(self, transaction):
         """

@@ -27,3 +27,12 @@ class EdgeNodeList:
 
     def get_list(self):
         return self.list
+
+    def has_this_edge(self, pubkey_address):
+        for e in self.list:
+            print('edge: ', e[2])
+            print('pubkey: ', pubkey_address)
+            if e[2] == pubkey_address:
+                return True, e[0], e[1]
+
+        return False, None, None

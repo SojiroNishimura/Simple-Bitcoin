@@ -38,10 +38,10 @@ class ClientCore:
         self.bm = BlockchainManager(my_genesis_block.to_dict())
         self.callback = callback
 
-    def start(self):
+    def start(self, my_pubkey=None):
         self.client_state = STATE_ACTIVE
         self.cm.start()
-        self.cm.connect_to_core_node()
+        self.cm.connect_to_core_node(my_pubkey)
 
     def shutdown(self):
         self.client_state = STATE_SHUTTING_DOWN

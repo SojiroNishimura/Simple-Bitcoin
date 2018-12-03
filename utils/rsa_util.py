@@ -67,3 +67,8 @@ class RSAUtil:
 
         return result
 
+    def encrypt_with_pubkey(self, target, pubkey_text):
+        pubkey = RSA.importKey(binascii.unhexlify(pubkey_text))
+        encrypto = pubkey.encrypt(target, 0)
+        return encrypto
+

@@ -28,7 +28,6 @@ class MessageManager:
         print('Initializing MessageManager...')
 
     def build(self, msg_type, my_port=50082, payload=None):
-
         message = {
                 'protocol': PROTOCOL_NAME,
                 'version': MY_VERSION,
@@ -42,7 +41,6 @@ class MessageManager:
         return json.dumps(message)
 
     def parse(self, msg):
-
         msg = json.loads(msg)
         msg_ver = StrictVersion(msg['version'])
 
@@ -54,7 +52,7 @@ class MessageManager:
             return ('error', ERR_PROTOCOL_UNMATCH, None, None)
         elif msg_ver > StrictVersion(MY_VERSION):
             return ('error', ERR_VERSION_UNMATCH, None, None)
-        elif cmd in (MSG_CORE_LIST, MSG_NEW_TRANSACTION, MSG_NEW_BLOCK, RSP_FULL_CHAIN, MSG_ENHANCED):
+        elif cmd in (MSG_CORE_LIST, MSG_NEW_TRANSACTION, MSG_NEW_BLOCK, RSP_FULL_CHAIN, MSG_ENHANCED, MSG_ADD_AS_EDGE):
             result_type = OK_WITH_PAYLOAD
             return ('ok', result_type, cmd, my_port, payload)
         else:
