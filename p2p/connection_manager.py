@@ -48,7 +48,7 @@ class ConnectionManager:
         self.ping_timer_p = threading.Timer(PING_INTERVAL, self.__check_peers_connection)
         self.ping_timer_p.start()
 
-        self.ping_timer_e = threading.Timer(PING_INTERVAL, self.__check_peers_connection)
+        self.ping_timer_e = threading.Timer(PING_INTERVAL, self.__check_edges_connection)
         self.ping_timer_e.start()
 
     # ユーザが指定した既知のCoreノードへ接続
