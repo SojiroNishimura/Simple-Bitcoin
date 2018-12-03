@@ -159,6 +159,9 @@ class BlockchainManager:
         else:
             return None
 
+    def get_my_chain_length(self):
+        return len(self.chain)
+
     def remove_useless_transaction(self, transaction_pool):
         """
         与えられたTransactionのリストに、すでに自分が管理するメインチェーンに含まれるTransactionがある場合、
