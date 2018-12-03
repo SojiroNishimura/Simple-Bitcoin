@@ -31,7 +31,7 @@ if __name__ == '__main__':
         p_phrase = args[4]
     else:
         print('Param Error')
-        print('$ sample_server2.py <my_port> <core_node_ip_address> <core_node_port_num> <pass_phrase_for_keys>')
+        print('$ {} <my_port> <core_node_ip_address> <core_node_port_num> <pass_phrase_for_keys>'.format(args[0]))
         quit()
 
     main(my_port, c_host, c_port, p_phrase)
